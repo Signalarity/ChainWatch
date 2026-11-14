@@ -1,4 +1,5 @@
 name: Publish ChainWatch
+# Publish the computed snapshot after GitHub Pages is enabled in repository settings.
 on:
   push:
     branches: [main]
