@@ -64,3 +64,17 @@ test('institution groups contain all filtered observations, including those beyo
  const empty=await client.dashboard(new URLSearchParams({status:'protected'}));assert.deepEqual(empty.observationGroups,[]);
  f.db.close();
 });
+test('Coinbase and Silk Road finish first, then fresh addresses retain their original order',async()=>{
+ const f=fixture(),original=globalThis.fetch,seen=[];
+ const {SHARED_HEIGHT,SHARED_HASH,FORK,FORK_HASH}=await import('../lib/evidence.mjs');
+ const ordinary=[address(301),address(302)].sort(),coinbase=address(310),silk=address(311);
+ await add(f.monitor,[{address:ordinary[1],entity:'Other B'},{address:silk,entity:'Silk Road'},{address:ordinary[0],entity:'Other A'},{address:coinbase,entity:'Coinbase'}]);
+ globalThis.fetch=async input=>{const path=new URL(input).pathname.slice(4);
+  if(path==='/blocks/tip/height')return Response.json(1000000);
+  if(path==='/block-height/'+SHARED_HEIGHT)return Response.json(SHARED_HASH);
+  if(path==='/block-height/'+FORK)return Response.json(FORK_HASH);
+  if(path.startsWith('/address/')){seen.push(path.split('/')[2]);return Response.json([])}
+  throw Error('Unexpected request '+path);
+ };
+ try{await f.monitor.refresh(undefined,{minInterval:0,maxDuration:60000,maxRequests:64});assert.deepEqual([...new Set(seen)],[coinbase,silk,...ordinary]);assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM jobs WHERE done=0').get().n,0)}finally{globalThis.fetch=original;f.db.close()}
+});
