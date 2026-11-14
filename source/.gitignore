@@ -1,0 +1,8 @@
+node_modules/
+.state/
+output/
+pages-dist/
+*.sqlite*
+*.key
+config.local.json
+.env*

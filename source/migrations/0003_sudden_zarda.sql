@@ -1,0 +1,1 @@
+ALTER TABLE `jobs` ADD `page_fingerprint` text DEFAULT '' NOT NULL;

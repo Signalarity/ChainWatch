@@ -1,0 +1,1 @@
+CREATE INDEX `job_address` ON `jobs` (`address`);
