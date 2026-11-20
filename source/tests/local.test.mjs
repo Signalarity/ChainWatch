@@ -78,3 +78,18 @@ test('Coinbase and Silk Road finish first, then fresh addresses retain their ori
  };
  try{await f.monitor.refresh(undefined,{minInterval:0,maxDuration:60000,maxRequests:64});assert.deepEqual([...new Set(seen)],[coinbase,silk,...ordinary]);assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM jobs WHERE done=0').get().n,0)}finally{globalThis.fetch=original;f.db.close()}
 });
+test('new Coinbase attribution gets its first scan before an existing unfinished Coinbase history',async()=>{
+ const f=fixture(),original=globalThis.fetch,seen=[];
+ const {SHARED_HEIGHT,SHARED_HASH,FORK,FORK_HASH}=await import('../lib/evidence.mjs');
+ const active=address(410),fresh=address(411);
+ await add(f.monitor,[{address:active,entity:'Coinbase'},{address:fresh,entity:'Coinbase'}]);
+ f.db.sqlite.prepare('INSERT INTO jobs(id,address,chain,cursor) VALUES (?,?,?,?)').run(active+':btc',active,'btc','preserved-history-cursor');
+ globalThis.fetch=async input=>{const path=new URL(input).pathname.slice(4);
+  if(path==='/blocks/tip/height')return Response.json(1000000);
+  if(path==='/block-height/'+SHARED_HEIGHT)return Response.json(SHARED_HASH);
+  if(path==='/block-height/'+FORK)return Response.json(FORK_HASH);
+  if(path.startsWith('/address/')){seen.push(path);return Response.json([])}
+  throw Error('Unexpected request '+path);
+ };
+ try{await f.monitor.refresh(undefined,{minInterval:0,maxDuration:60000,maxRequests:64});assert.equal(seen[0].split('/')[2],fresh);assert.ok(seen.some(path=>path.includes(active)&&path.includes('preserved-history-cursor')))}finally{globalThis.fetch=original;f.db.close()}
+});

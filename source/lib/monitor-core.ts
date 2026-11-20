@@ -36,10 +36,12 @@ async function chooseOwner(now:number,turn:number){
  // Finish the requested institutions first; completed histories return to the
  // ordinary head-check rotation so they cannot monopolize the collector.
  for(const entity of ['Coinbase','Silk Road']){
-  const active=await db.prepare('SELECT a.*,j.id AS job_id FROM addresses a JOIN jobs j ON j.address=a.address WHERE a.entity=? AND j.next_attempt<=? AND j.done=0 ORDER BY j.next_attempt,j.checked,j.id LIMIT 1').bind(entity,now).first();
-  if(active)return active;
+  // Newly attributed addresses get their first look before a long-running
+  // history consumes further pages; saved cursors resume immediately afterward.
   const fresh=await db.prepare('SELECT a.* FROM addresses a WHERE a.entity=? AND a.checked=0 AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.address=a.address) ORDER BY a.priority,a.address LIMIT 1').bind(entity).first();
   if(fresh)return fresh;
+  const active=await db.prepare('SELECT a.*,j.id AS job_id FROM addresses a JOIN jobs j ON j.address=a.address WHERE a.entity=? AND j.next_attempt<=? AND j.done=0 ORDER BY j.next_attempt,j.checked,j.id LIMIT 1').bind(entity,now).first();
+  if(active)return active;
  }
  const unfinished=()=>db.prepare('SELECT a.*,j.id AS job_id FROM jobs j JOIN addresses a ON a.address=j.address WHERE j.next_attempt<=? AND j.done=0 ORDER BY j.next_attempt,j.checked,j.id LIMIT 1').bind(now).first();
  const heads=()=>db.prepare('SELECT a.*,j.id AS job_id FROM jobs j JOIN addresses a ON a.address=j.address WHERE j.next_attempt<=? AND j.done=1 ORDER BY j.next_attempt,j.checked,j.id LIMIT 1').bind(now).first();

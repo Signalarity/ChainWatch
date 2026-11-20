@@ -18,7 +18,7 @@ systemctl --user daemon-reload
 systemctl --user enable --now chainwatch-collector.service
 ```
 
-Imports accept the existing public registry schema: `address`, `entity`, `label`, `category`, `source`, `source_url`, `confidence`, `last_updated`. JSON arrays and NDJSON are supported. The included seed has 808 public-registry addresses; the extended catalog metadata describes 375,797 addresses across 412 attributed entities. Existing collector results can be retained with the separate public-results importer. Imported observations retain their last-verified timestamp and are rechecked as collection continues, and new local scan progress starts honestly at zero unless the actual jobs were migrated.
+Imports accept the existing public registry schema: `address`, `entity`, `label`, `category`, `source`, `source_url`, `confidence`, `last_updated`. JSON arrays and NDJSON are supported. The included seed has 809 sourced addresses (including inferred cluster attributions); the extended catalog metadata describes 375,797 addresses across 412 attributed entities. Existing collector results can be retained with the separate public-results importer. Imported observations retain their last-verified timestamp and are rechecked as collection continues, and new local scan progress starts honestly at zero unless the actual jobs were migrated.
 
 The service starts with your user session and resumes saved work after restarts. It keeps running without an open browser. It cannot process while the machine is off or asleep. If you need it to run after logout, user lingering must be enabled separately; this installer does not change that system setting.
 
@@ -77,3 +77,5 @@ See `THIRD_PARTY_NOTICES.md` for address-label attribution and license notices. 
 After building, run `node scripts/package-single.mjs ~/.local/share/chainwatch/site /path/to/index.html` to package the current public snapshot, dashboard, catalog and compact address index into one HTML file. Upload that file as `index.html` at the repository root and choose the root as the GitHub Pages source. It works without companion assets or a connection to the collector. The packager checks GitHub’s 25 MiB browser-upload ceiling.
 
 This is a fixed data snapshot until a new file is uploaded. The collector keeps scanning locally; automatic publication still requires configuring the repository and its publishing access. The single-file page checks for an updated HTML version when hosted over HTTP, while it also remains usable offline.
+
+Coinbase and Silk Road histories are prioritized ahead of the ordinary catalog. Newly added addresses in those institutions receive a first look before resuming long histories. Completed histories retain the normal head-check rotation. The Coinbase supplement includes an [Arkham-attributed cold wallet](https://arkm.com/explorer/address/bc1qc5uavalcs93yw89x8xvh35vq3h003ujp4f74ap), marked as a cluster attribution rather than an official Coinbase disclosure.
