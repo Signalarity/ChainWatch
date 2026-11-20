@@ -26,6 +26,7 @@ export async function checkNextReplay(db,{remote,validate,now=Math.floor(Date.no
   result=e instanceof BatchLimit?{state:'incomplete',detail:'Replay assessment reached its request or time budget; full validity was not established.'}:{state:'unavailable',detail:safeMessage(e.message||'Replay assessment failed.')};
   if(e instanceof ExplorerError&&e.status===429)db.prepare("INSERT INTO meta(key,value) VALUES ('explorer_pause',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(String(now+Math.max(60,e.retryAfter)));
  }
+ result.detail=safeMessage(result.detail);
  const retry=['incomplete','unavailable','input_pending'].includes(result.state)?300:3600;
  db.prepare('INSERT INTO replay_assessments(txid,state,detail,checked,next_attempt) VALUES (?,?,?,?,?) ON CONFLICT(txid) DO UPDATE SET state=excluded.state,detail=excluded.detail,checked=excluded.checked,next_attempt=excluded.next_attempt').run(row.btc_tx,result.state,result.detail,now,now+retry);
  return {txid:row.btc_tx,...result,requests:session.metrics.requests};

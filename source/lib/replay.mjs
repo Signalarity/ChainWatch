@@ -36,11 +36,11 @@ export async function assessBtcReplay(session,tx,{xbtTip,validate}={}){
  }
  // Find a concrete conflicting input or a missing dependency. A missing parent
  // might itself replay later: never describe it as permanent protection.
- let missing,unconfirmed=false;
+ let unconfirmed=false;
  for(const input of tx.vin){
   if(!/^[a-f0-9]{64}$/.test(input.txid||'')||!Number.isInteger(input.vout)||input.vout<0)return {state:'unavailable',detail:'BTC input reference unavailable.'};
   const parent=await session.tx('xbt',input.txid);
-  if(!parent){missing ||= `${input.txid}:${input.vout}`;continue;}
+  if(!parent)return {state:'missing_ancestor',detail:`XBT explorer did not find the funding transaction for ${input.txid}:${input.vout}. The exact BTC spend lacks a dependency on XBT now; replaying ancestors could change that. Other inputs may have additional blockers.${node?.reason?' Local XBT node: '+node.reason+'.':''}${hint}`};
   if(!parent.status?.confirmed){unconfirmed=true;continue;}
   if(await session.get('xbt',`/block-height/${parent.status.block_height}`)!==parent.status.block_hash)throw Error('XBT funding block changed during replay assessment.');
   const prev=parent.vout?.[input.vout];if(!prev)return {state:'unavailable',detail:'Referenced XBT funding output unavailable.'};
@@ -59,7 +59,6 @@ export async function assessBtcReplay(session,tx,{xbtTip,validate}={}){
    unconfirmed=true;
   }
  }
- if(missing)return {state:'missing_ancestor',detail:`XBT explorer did not find the funding transaction for ${missing}. The exact BTC spend lacks a dependency on XBT now; replaying ancestors could change that.${node?.reason?' Local XBT node: '+node.reason+'.':''}${hint}`};
  if(unconfirmed)return {state:'input_pending',detail:'At least one XBT funding transaction or conflicting spend is unconfirmed or has fewer than six confirmations. Replay status is not settled.'};
  if(node?.allowed===false)return {state:'node_rejected',detail:`The local XBT node rejected the BTC transaction: ${node.reason||'reason unavailable'}. An input conflict was not established. Rejection may be policy, fee, timing, or consensus related; it does not alone prove permanent replay protection.${hint}`};
  return {state:'inputs_available',detail:`All referenced outputs were found confirmed and reported unspent on XBT, but full transaction validity was not established by a local node. Absence of a blocker is not proof of replayability.${hint}`};
