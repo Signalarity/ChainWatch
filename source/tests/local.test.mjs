@@ -93,11 +93,11 @@ test('new Coinbase attribution gets its first scan before an existing unfinished
  };
  try{await f.monitor.refresh(undefined,{minInterval:0,maxDuration:60000,maxRequests:64});assert.equal(seen[0].split('/')[2],fresh);assert.ok(seen.some(path=>path.includes(active)&&path.includes('preserved-history-cursor')))}finally{globalThis.fetch=original;f.db.close()}
 });
-test('government and exchange priority queues rotate ahead of the general catalog',async()=>{
+test('government, ETF and exchange priority queues rotate ahead of the general catalog',async()=>{
  const f=fixture(),original=globalThis.fetch,seen=[];
  const {SHARED_HEIGHT,SHARED_HASH,FORK,FORK_HASH}=await import('../lib/evidence.mjs');
- const coinbase=address(510),silk=address(511),salvador=address(512),other=address(513);
- await add(f.monitor,[{address:coinbase,entity:'Coinbase'},{address:silk,entity:'Silk Road',category:'Historical seizure'},{address:salvador,entity:'El Salvador',category:'Government'},{address:other,entity:'Other Exchange'}]);
+ const coinbase=address(510),silk=address(511),salvador=address(512),bitwise=address(514),other=address(513);
+ await add(f.monitor,[{address:coinbase,entity:'Coinbase'},{address:silk,entity:'Silk Road',category:'Historical seizure'},{address:salvador,entity:'El Salvador',category:'Government'},{address:bitwise,entity:'Bitwise Bitcoin ETF (BITB)',category:'ETF'},{address:other,entity:'Other Exchange'}]);
  globalThis.fetch=async input=>{const path=new URL(input).pathname.slice(4);
   if(path==='/blocks/tip/height')return Response.json(1000000);
   if(path==='/block-height/'+SHARED_HEIGHT)return Response.json(SHARED_HASH);
@@ -105,5 +105,5 @@ test('government and exchange priority queues rotate ahead of the general catalo
   if(path.startsWith('/address/')){seen.push(path.split('/')[2]);return Response.json([])}
   throw Error('Unexpected request '+path);
  };
- try{await f.monitor.refresh(undefined,{minInterval:0,maxDuration:60000,maxRequests:64});assert.deepEqual([...new Set(seen)],[coinbase,silk,salvador,other]);assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM jobs WHERE done=0').get().n,0)}finally{globalThis.fetch=original;f.db.close()}
+ try{await f.monitor.refresh(undefined,{minInterval:0,maxDuration:60000,maxRequests:64});assert.deepEqual([...new Set(seen)],[coinbase,silk,salvador,bitwise,other]);assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM jobs WHERE done=0').get().n,0)}finally{globalThis.fetch=original;f.db.close()}
 });

@@ -35,7 +35,7 @@ async function chooseOwner(now:number,turn:number){
  const db=database();
  // Finish the requested institutions first; completed histories return to the
  // ordinary head-check rotation so they cannot monopolize the collector.
- const priorityEntities=['Coinbase','Silk Road','El Salvador'];
+ const priorityEntities=['Coinbase','Silk Road','El Salvador','Bitwise Bitcoin ETF (BITB)'];
  const first=turn%priorityEntities.length;
  // Rotate priority institutions so a long exchange history cannot starve
  // government reserves or historical seizure addresses (and vice versa).
