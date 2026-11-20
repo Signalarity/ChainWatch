@@ -11,8 +11,8 @@ export function ranked(rows){const groups=new Map();for(const r of rows){if(!isS
 export function groupByInstitution(rows){
  const groups=new Map();
  for(const row of rows){
-  if(!groups.has(row.entity))groups.set(row.entity,{entity:row.entity,value:0,checked:0,time:0,addresses:new Set(),records:[]});
-  const group=groups.get(row.entity);group.value+=row.value;group.checked=Math.max(group.checked,row.checked||0);group.time=Math.max(group.time,row.time||0);group.addresses.add(row.address);group.records.push(row);
+  if(!groups.has(row.entity))groups.set(row.entity,{entity:row.entity,value:0,checked:0,time:0,addresses:new Set(),reasons:new Map(),records:[]});
+  const group=groups.get(row.entity);group.value+=row.value;group.checked=Math.max(group.checked,row.checked||0);group.time=Math.max(group.time,row.time||0);group.addresses.add(row.address);group.records.push(row);const reason=row.replay_state||'not_checked';group.reasons.set(reason,(group.reasons.get(reason)||0)+1);
  }
- return [...groups.values()].sort((a,b)=>b.time-a.time||a.entity.localeCompare(b.entity)).map(group=>({...group,addressCount:group.addresses.size,addresses:undefined,count:group.records.length,records:[...group.records].sort((a,b)=>b.time-a.time||a.outpoint.localeCompare(b.outpoint))}));
+ return [...groups.values()].sort((a,b)=>b.time-a.time||a.entity.localeCompare(b.entity)).map(group=>({...group,addressCount:group.addresses.size,reasons:[...group.reasons].map(([state,count])=>({state,count})),addresses:undefined,count:group.records.length,records:[...group.records].sort((a,b)=>b.time-a.time||a.outpoint.localeCompare(b.outpoint))}));
 }

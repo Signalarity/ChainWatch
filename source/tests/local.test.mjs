@@ -59,7 +59,7 @@ test('institution groups contain all filtered observations, including those beyo
  insert(f.db,{...record('xbt_only',252),address:address(12),entity:'Beta Treasury',checked:START+500,time:START+300});
  const out=join(f.root,'site');exportSnapshot(f.db.sqlite,out);const client=createSnapshotClient({baseUrl:'https://example.github.io/chainwatch/',fetcher:fakeFiles(out).fetcher});
  const all=await client.dashboard(new URLSearchParams());assert.equal(all.events.length,200);assert.equal(all.observationGroups.length,2);assert.equal(all.observationGroups[0].entity,'Beta Treasury');
- const alpha=all.observationGroups.find(g=>g.entity==='Alpha Exchange');assert.equal(alpha.count,251);assert.equal(alpha.records.length,251);assert.equal(alpha.addressCount,1);assert.equal(alpha.value,251*252/2*100000);assert.equal(all.observationGroups.reduce((n,g)=>n+g.value,0),all.summary.totalSplitValue);
+ const alpha=all.observationGroups.find(g=>g.entity==='Alpha Exchange');assert.equal(alpha.count,251);assert.equal(alpha.records.length,251);assert.equal(alpha.addressCount,1);assert.deepEqual(alpha.reasons,[{state:'not_checked',count:251}]);assert.equal(alpha.value,251*252/2*100000);assert.equal(all.observationGroups.reduce((n,g)=>n+g.value,0),all.summary.totalSplitValue);
  const selected=await client.dashboard(new URLSearchParams({institution:'Beta Treasury'}));assert.equal(selected.observationGroups.length,1);assert.equal(selected.observationGroups[0].count,1);assert.equal(selected.observationGroups[0].value,25200000);
  const empty=await client.dashboard(new URLSearchParams({status:'protected'}));assert.deepEqual(empty.observationGroups,[]);
  f.db.close();
