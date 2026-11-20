@@ -54,13 +54,13 @@ node local/run.mjs --config ~/.config/chainwatch/config.json
 
 The date window begins **September 1, 2026 UTC**. BTC and XBT share history through block 961631; divergence begins at 961632, before XBT’s BLAKE2b checkpoint at 961640.
 
-Shared original outputs must match on both explorers. The result set contains only splits: divergent spends with six confirmations on both chains, standard opt-in protected XBT spends, and confirmed spends on one chain while the original output remains unspent on the other. BTC spends with unspent XBT outputs are counted as observed splits; BTC-side replay protection is not required. Identical spends are discarded instead of stored as tracked transactions. One-sided observations are rechecked and removed if subsequently replayed. Canonical block checks and current output-spending lookups are retained when transaction bodies are cached. Missing explorer responses never mean unspent. Inscription signals alone do not establish protection. Results rely on explorer-reported inclusion, not independent proof-of-work and general script validation.
+Shared original outputs must match on both explorers. The result set contains divergent spends with six confirmations on both chains, standard opt-in protected XBT spends, and one-sided observations. One-sided observations are confirmed spends on one chain while the original output is reported unspent on the other; these do not prove replay protection. BTC spends with unspent XBT outputs are retained as one-sided observations; BTC-side replay protection is not required. Identical spends are discarded instead of stored as tracked transactions. One-sided observations are rechecked and removed if subsequently replayed. Canonical block checks and current output-spending lookups are retained when transaction bodies are cached. Missing explorer responses never mean unspent. Inscription signals alone do not establish protection. Results rely on explorer-reported inclusion, not independent proof-of-work and general script validation.
 
 Observed splits are collapsed into one row per attributed institution, with that institution’s total input value and expandable transaction details. Expanded lists reveal 50 observations at a time, including matches beyond the former 200-row feed limit.
 
 The dashboard labels which original coin stayed unspent: XBT stayed when BTC moved, or BTC stayed when XBT moved (including protected XBT spends). Both-spent pairs are labeled separately. Summary cards, institution summaries, transaction rows and evidence details show these outcomes as of the last check, without inferring intent.
 
-The Total coins split card sums every matched original output value once, including results beyond the visible feed and top ten. The alphabetized institution dropdown filters totals, rankings, observed transactions and the address directory alongside the text, category, evidence and date filters.
+The Confirmed split value card counts only divergent spends with six confirmations on both chains. The separate One-sided observed value includes all other matching observations. Values count watched original outputs once, including results beyond the visible feed and top ten. The alphabetized institution dropdown filters totals, rankings, observed transactions and the address directory alongside the text, category, evidence and date filters.
 
 Rankings sum watched shared input value per BTC/XBT spending pair. They are not sales totals or claims of institutional intent. Ownership labels are public attributions and can be wrong or historical; inferred clusters are identified. Government custody is distinct from a strategic reserve. Backfill is incremental, and the top ten is only a ranking of verified results found so far.
 
@@ -83,3 +83,41 @@ Coinbase, Silk Road, El Salvador and Bitwise Bitcoin ETF (BITB) histories rotate
 Government additions include 19 more El Salvador addresses listed by the [official ONBTC wallet API](https://bitcoin.gob.sv/api/v1/wallet/ONBTC). Two court-documented Silk Road addresses are categorized as **Historical seizure** and explicitly do not establish current government control. They remain separate from Government and Government custody.
 
 BITB wallets are imported from the issuer’s product-page `walletBalances` disclosure, including active and inactive addresses. Attribution is issuer-published, not inferred from transfer counterparties. The original lowercase `bitwise` record is normalized to Bitwise Bitcoin ETF (BITB); saved scan cursors remain intact.
+
+## Replay assessment
+
+After each successful discovery batch, one distinct BTC-only spending transaction
+is assessed; all watched outputs spent by that transaction share the assessment.
+Existing observations are included automatically, with BITB preferred among equally
+old checks. Completed assessments are revisited hourly; transient/budget failures
+retry after five minutes. Explorer cooldowns remain enforced. Discovery continues
+independently and a failed replay check never implies an output is unspent.
+
+If the local XBT 29.5 CLI is installed in its standard user directory, the checker
+uses its local RPC cookie implicitly to run only `getblockchaininfo`,
+`getblockhash`, and `testmempoolaccept`. The node must be synchronized on mainnet
+and match the XBT checkpoint. `testmempoolaccept` is a validation dry run: no
+transaction is broadcast. Optional `xbtValidationCli` and `xbtValidationDatadir`
+settings override the local paths; these private settings are never exported.
+Without an available node, the checker can inspect funding and conflicting spends,
+but cannot call an otherwise compatible transaction replayable with certainty.
+
+Assessment states distinguish node acceptance, node rejection, verified conflicting
+inputs, missing funding transactions, pending conflicts, no input blocker found,
+and incomplete or unavailable checks. Missing ancestors may themselves replay.
+Node policy rejection, a fee threshold, or an inscription byte pattern alone does
+not establish permanent replay protection. Output-size hints reference the local
+XBT source thresholds (83 bytes OP_RETURN, 34 otherwise); active consensus rules,
+input exemptions and script execution determine the actual result.
+
+Public evidence exports include only assessment state, explanation and check time.
+Raw transaction hex, RPC cookies, node paths and CLI error output are excluded.
+The dashboard separates confirmed differing spends from one-sided coin value and
+lets users filter replay assessments. The legacy snapshot-client field
+`summary.totalSplitValue` retains the aggregate observed value for compatibility;
+the displayed confirmed total uses `summary.confirmedSplitValue`.
+
+Run a single queued check manually with `node local/cli.mjs replay --config
+~/.config/chainwatch/config.json` when the collector is stopped. Local discovery
+and replay workers share a process; do not run a second worker against a running
+collector.

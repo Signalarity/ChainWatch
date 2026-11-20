@@ -32,8 +32,8 @@ export function classify({btc,xbt,btcTip,xbtTip}) {
   if(bc>=6&&xc>=6)return {status:'split',detail:'The same pre-fork output has different spending transactions with at least six confirmations on each chain. Explorer-reported evidence; intent is unknown.'};
   return {status:'pending',detail:'Different spends observed; waiting for six confirmations on each chain.'};
  }
- if(btc.spent)return {status:'btc_only',detail:'Observed split: the original output was spent on BTC and remains unspent on XBT at the last check.'};
- if(xbt.spent)return {status:'xbt_only',detail:'Observed split: the original output was spent on XBT and remains unspent on BTC at the last check.'};
+ if(btc.spent)return {status:'btc_only',detail:'One-sided observation: the original output was spent on BTC and remains unspent on XBT at the last check.'};
+ if(xbt.spent)return {status:'xbt_only',detail:'One-sided observation: the original output was spent on XBT and remains unspent on BTC at the last check.'};
  return {status:'unspent',detail:'Original output remains unspent on both explorers.'};
 }
 export function aggregateSplits(rows,start=START,end=Infinity) {

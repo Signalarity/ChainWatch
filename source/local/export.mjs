@@ -2,6 +2,7 @@ import {mkdirSync,writeFileSync,renameSync,readFileSync,existsSync,readdirSync,r
 import {join,resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {PUBLIC_ADDRESS_FIELDS,PUBLIC_OBSERVATION_FIELDS,pick,safeMessage,addressBucket,isSplit,splitDetail} from './public-data.mjs';
+import {replayFields} from '../lib/replay.mjs';
 import {START,FORK,FORK_HASH,SHARED_HEIGHT,SHARED_HASH} from '../lib/evidence.mjs';
 function json(file,value){mkdirSync(resolve(file,'..'),{recursive:true});const tmp=file+'.tmp';writeFileSync(tmp,JSON.stringify(value)+'\n');renameSync(tmp,file)}
 function hash(value){return createHash('sha256').update(value).digest('hex').slice(0,24)}
@@ -24,7 +25,8 @@ export function exportSnapshot(sqlite,outputDir,{now=Date.now()}={}){
   for(const [bucket,entries]of buckets){entries.sort((a,b)=>a[0].localeCompare(b[0]));json(join(catalogRoot,'lookup',bucket+'.json'),entries)}
   directory.categories=[...categories].map(([category,count])=>({category,count}));json(join(catalogRoot,'directory.json'),directory);
  }
- const observations=sqlite.prepare('SELECT o.*,a.category,a.confidence,a.source_url FROM observations o JOIN addresses a ON a.address=o.address WHERE o.time>=? ORDER BY o.time DESC,o.outpoint').all(START).filter(isSplit).map(r=>({...pick(r,PUBLIC_OBSERVATION_FIELDS),detail:splitDetail(r)}));
+ const assessments=new Map(sqlite.prepare('SELECT txid,state,detail,checked FROM replay_assessments').all().map(r=>[r.txid,r]));
+ const observations=sqlite.prepare('SELECT o.*,a.category,a.confidence,a.source_url FROM observations o JOIN addresses a ON a.address=o.address WHERE o.time>=? ORDER BY o.time DESC,o.outpoint').all(START).filter(isSplit).map(r=>({...pick({...r,...replayFields(r,assessments.get(r.btc_tx))},PUBLIC_OBSERVATION_FIELDS),detail:splitDetail(r)}));
  const progress=sqlite.prepare('SELECT address,checked FROM addresses WHERE checked>0 ORDER BY address').all().map(r=>[r.address,r.checked]);
  const meta=Object.fromEntries(sqlite.prepare("SELECT key,value FROM meta WHERE key IN ('last_scan','last_error','tips','scan_metrics')").all().map(r=>[r.key,r.value]));
  if(meta.last_error)meta.last_error=safeMessage(meta.last_error);
