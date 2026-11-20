@@ -58,6 +58,8 @@ Shared original outputs must match on both explorers. The result set contains on
 
 Observed splits are collapsed into one row per attributed institution, with that institution’s total input value and expandable transaction details. Expanded lists reveal 50 observations at a time, including matches beyond the former 200-row feed limit.
 
+The dashboard labels which original coin stayed unspent: XBT stayed when BTC moved, or BTC stayed when XBT moved (including protected XBT spends). Both-spent pairs are labeled separately. Summary cards, institution summaries, transaction rows and evidence details show these outcomes as of the last check, without inferring intent.
+
 The Total coins split card sums every matched original output value once, including results beyond the visible feed and top ten. The alphabetized institution dropdown filters totals, rankings, observed transactions and the address directory alongside the text, category, evidence and date filters.
 
 Rankings sum watched shared input value per BTC/XBT spending pair. They are not sales totals or claims of institutional intent. Ownership labels are public attributions and can be wrong or historical; inferred clusters are identified. Government custody is distinct from a strategic reserve. Backfill is incremental, and the top ten is only a ranking of verified results found so far.
