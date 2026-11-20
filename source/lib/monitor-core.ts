@@ -35,7 +35,11 @@ async function chooseOwner(now:number,turn:number){
  const db=database();
  // Finish the requested institutions first; completed histories return to the
  // ordinary head-check rotation so they cannot monopolize the collector.
- for(const entity of ['Coinbase','Silk Road']){
+ const priorityEntities=['Coinbase','Silk Road','El Salvador'];
+ const first=turn%priorityEntities.length;
+ // Rotate priority institutions so a long exchange history cannot starve
+ // government reserves or historical seizure addresses (and vice versa).
+ for(const entity of [...priorityEntities.slice(first),...priorityEntities.slice(0,first)]){
   // Newly attributed addresses get their first look before a long-running
   // history consumes further pages; saved cursors resume immediately afterward.
   const fresh=await db.prepare('SELECT a.* FROM addresses a WHERE a.entity=? AND a.checked=0 AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.address=a.address) ORDER BY a.priority,a.address LIMIT 1').bind(entity).first();
