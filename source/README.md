@@ -86,12 +86,21 @@ BITB wallets are imported from the issuer’s product-page `walletBalances` disc
 
 ## Replay assessment
 
-After each successful discovery batch, one distinct BTC-only spending transaction
-is assessed; all watched outputs spent by that transaction share the assessment.
-Existing observations are included automatically, with BITB preferred among equally
-old checks. Completed assessments are revisited hourly; transient/budget failures
-retry after five minutes. Explorer cooldowns remain enforced. Discovery continues
-independently and a failed replay check never implies an output is unspent.
+Discovery, replay assessment and snapshot publication run in independent asynchronous
+loops. Both explorer clients share a global gate: at most two requests in flight,
+with at least 500 ms between starts and a shared explorer cooldown. A slow discovery
+batch does not block replay checking. There is one replay worker, avoiding duplicate
+concurrent assessment of a transaction. It handles BTC-only and XBT-only spending
+transactions; confirmed divergent pairs and standard opt-in protected XBT spends
+already have evidence-based explanations. All watched input rows share their
+spending transaction's assessment. Existing assessments are preserved on upgrade.
+
+The queue includes every tracked one-sided transaction, beyond visible table rows;
+priority institutions are preferred among equally old checks. Completed assessments
+are revisited hourly; unavailable/incomplete checks retry after five minutes.
+Local snapshots refresh about once a minute, with GitHub publishing on the existing
+schedule. The dashboard reports assessed/pending distinct transactions and worker
+status, and shows the reason and timestamp beside every row in both tables.
 
 If the local XBT 29.5 CLI is installed in its standard user directory, the checker
 uses its local RPC cookie implicitly to run only `getblockchaininfo`,
@@ -101,6 +110,8 @@ transaction is broadcast. Optional `xbtValidationCli` and `xbtValidationDatadir`
 settings override the local paths; these private settings are never exported.
 Without an available node, the checker can inspect funding and conflicting spends,
 but cannot call an otherwise compatible transaction replayable with certainty.
+XBT-to-BTC checks currently use public BTC explorer evidence and recognized XBT
+opt-in signatures; they do not claim full BTC script validation without a BTC node.
 
 Assessment states distinguish node acceptance, node rejection, verified conflicting
 inputs, missing funding transactions, pending conflicts, no input blocker found,
@@ -121,3 +132,8 @@ Run a single queued check manually with `node local/cli.mjs replay --config
 ~/.config/chainwatch/config.json` when the collector is stopped. Local discovery
 and replay workers share a process; do not run a second worker against a running
 collector.
+
+Publication freezes an allowlisted snapshot before network work and holds a
+process-owned staging lock. Independent exports can continue during a Git push
+without deleting the generation being published. Concurrent publication attempts
+return busy, and stale locks from dead publisher processes can be recovered.

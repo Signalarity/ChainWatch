@@ -107,3 +107,12 @@ test('government, ETF and exchange priority queues rotate ahead of the general c
  };
  try{await f.monitor.refresh(undefined,{minInterval:0,maxDuration:60000,maxRequests:64});assert.deepEqual([...new Set(seen)],[coinbase,silk,salvador,bitwise,other]);assert.equal(f.db.sqlite.prepare('SELECT COUNT(*) n FROM jobs WHERE done=0').get().n,0)}finally{globalThis.fetch=original;f.db.close()}
 });
+test('publisher freezes a generation and excludes concurrent staging into the same checkout',async()=>{
+ const f=fixture(),out=join(f.root,'site');mkdirSync(out);writeFileSync(join(out,'index.html'),'<h1>Generation one</h1>');
+ const remote=join(f.root,'remote.git');await git(['init','--bare','--quiet',remote],{cwd:f.root});
+ const cfg={publishRepo:remote,publicationDir:join(f.root,'publication'),outputDir:out};
+ const first=publish(cfg);writeFileSync(join(out,'index.html'),'<h1>Generation two</h1>');
+ const second=await publish(cfg);assert.equal(second.busy,true);
+ const result=await first;assert.equal(result.published,true);assert.equal(await git(['--git-dir='+remote,'show','main:docs/index.html'],{cwd:f.root}),'<h1>Generation one</h1>');
+ await publish(cfg);assert.equal(await git(['--git-dir='+remote,'show','main:docs/index.html'],{cwd:f.root}),'<h1>Generation two</h1>');f.db.close();
+});

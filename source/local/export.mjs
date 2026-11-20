@@ -25,12 +25,13 @@ export function exportSnapshot(sqlite,outputDir,{now=Date.now()}={}){
   for(const [bucket,entries]of buckets){entries.sort((a,b)=>a[0].localeCompare(b[0]));json(join(catalogRoot,'lookup',bucket+'.json'),entries)}
   directory.categories=[...categories].map(([category,count])=>({category,count}));json(join(catalogRoot,'directory.json'),directory);
  }
- const assessments=new Map(sqlite.prepare('SELECT txid,state,detail,checked FROM replay_assessments').all().map(r=>[r.txid,r]));
- const observations=sqlite.prepare('SELECT o.*,a.category,a.confidence,a.source_url FROM observations o JOIN addresses a ON a.address=o.address WHERE o.time>=? ORDER BY o.time DESC,o.outpoint').all(START).filter(isSplit).map(r=>({...pick({...r,...replayFields(r,assessments.get(r.btc_tx))},PUBLIC_OBSERVATION_FIELDS),detail:splitDetail(r)}));
+ const assessments=new Map(sqlite.prepare('SELECT source_chain,txid,state,detail,checked FROM replay_assessments').all().map(r=>[r.source_chain+':'+r.txid,r]));
+ const observations=sqlite.prepare('SELECT o.*,a.category,a.confidence,a.source_url FROM observations o JOIN addresses a ON a.address=o.address WHERE o.time>=? ORDER BY o.time DESC,o.outpoint').all(START).filter(isSplit).map(r=>({...pick({...r,...replayFields(r,assessments.get(r.status==='btc_only'?'btc:'+r.btc_tx:'xbt:'+r.xbt_tx))},PUBLIC_OBSERVATION_FIELDS),detail:splitDetail(r)}));
  const progress=sqlite.prepare('SELECT address,checked FROM addresses WHERE checked>0 ORDER BY address').all().map(r=>[r.address,r.checked]);
- const meta=Object.fromEntries(sqlite.prepare("SELECT key,value FROM meta WHERE key IN ('last_scan','last_error','tips','scan_metrics')").all().map(r=>[r.key,r.value]));
+ const meta=Object.fromEntries(sqlite.prepare("SELECT key,value FROM meta WHERE key IN ('last_scan','last_error','tips','scan_metrics','replay_worker')").all().map(r=>[r.key,r.value]));
  if(meta.last_error)meta.last_error=safeMessage(meta.last_error);
  if(meta.scan_metrics){try{const m=JSON.parse(meta.scan_metrics);meta.scan_metrics=JSON.stringify({...m,warnings:(m.warnings||[]).map(safeMessage)})}catch{delete meta.scan_metrics}}
+ if(meta.replay_worker){try{const r=JSON.parse(meta.replay_worker);meta.replay_worker=JSON.stringify({state:r.state,lastRun:r.lastRun,source:r.source,result:r.result});}catch{delete meta.replay_worker}}
  const jobs=sqlite.prepare('SELECT COUNT(*) jobs,COALESCE(SUM(done),0) completed,COALESCE(SUM(pages),0) pages FROM jobs').get();
  const resultId=hash(JSON.stringify({observations,progress,meta,jobs})),resultRoot=join(outputDir,'data/results',resultId),eventFiles=[];
  for(let i=0;i<observations.length;i+=2000){const file='events-'+i/2000+'.json';eventFiles.push(file);json(join(resultRoot,file),observations.slice(i,i+2000))}

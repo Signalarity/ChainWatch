@@ -3,7 +3,7 @@ import catalog from '../data/catalog-meta.json' with {type:'json'};
 import {isSplit} from '../local/public-data.mjs';
 import {START,FORK,FORK_HASH,SHARED_HEIGHT,SHARED_HASH} from './evidence.mjs';
 import {createSession,inspectOutput,historyPage,advanceJob,pageKey,BatchLimit,ExplorerError} from './collector.mjs';
-export function createMonitor(getDatabase:any){
+export function createMonitor(getDatabase:any,options:any={}){
 function database(){return typeof getDatabase==='function'?getDatabase():getDatabase;}
 const API={btc:'https://mempool.space/api',xbt:'https://mempool.guide/api'};
 type Chain=keyof typeof API;
@@ -59,7 +59,7 @@ async function refresh(requested?:string,limits:{maxRequests?:number;maxDuration
  await initialize();const db=database(),now=Math.floor(Date.now()/1000),until=String(now+90);
  const lock=await db.prepare("INSERT INTO meta(key,value) VALUES ('lease',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(meta.value AS INTEGER)<? RETURNING value").bind(until,now).first();
  if(!lock)return {busy:true,message:'A scan is already running.'};
- const session=createSession({fetcher:remote,cache:cacheStore(),...limits}),warnings:string[]=[],owners=new Set<string>();let last:any=null,stopped=false;
+ const session=createSession({fetcher:options.remote||remote,cache:cacheStore(),...limits}),warnings:string[]=[],owners=new Set<string>();let last:any=null,stopped=false;
  try {
   const pause:any=await db.prepare("SELECT value FROM meta WHERE key='explorer_pause'").first();if(Number(pause?.value)>now)return {paused:true,retryAfter:Number(pause.value)-now,message:'Public explorer requested a cooldown.'};
   const [btc,xbt,sharedB,sharedX,fork]=await Promise.all([session.get('btc','/blocks/tip/height'),session.get('xbt','/blocks/tip/height'),session.get('btc',`/block-height/${SHARED_HEIGHT}`),session.get('xbt',`/block-height/${SHARED_HEIGHT}`),session.get('xbt',`/block-height/${FORK}`)]);
